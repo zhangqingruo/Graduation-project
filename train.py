@@ -12,6 +12,7 @@ from pathlib import Path
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+from itertools import cycle
 
 import wandb
 from evaluate import evaluate
@@ -53,7 +54,8 @@ def train_model(
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    val_loader = DataLoader(val_set, shuffle=False, batch_size=1, num_workers=os.cpu_count(), pin_memory=True)
+    val_iter = iter(cycle(val_loader))
 
     # (Initialize logging)
     experiment = wandb.init(project='GAN', resume='allow', anonymous='must')
@@ -122,9 +124,10 @@ def train_model(
                     #     )
                     r_logit = discriminator(true_masks)
                     f_logit = discriminator(masks_pred)
-                    r_label = torch.ones(r_logit.size()).to(r_logit.device)
-                    f_label = torch.zeros(f_logit.size()).to(f_logit.device)
-                    loss_D = 0.5 * criterion1(r_logit, r_label) + 0.5 * criterion1(f_logit, f_label)
+                    # r_label = torch.ones(r_logit.size()).to(r_logit.device)
+                    # f_label = torch.zeros(f_logit.size()).to(f_logit.device)
+                    # loss_D = 0.5 * criterion1(r_logit, r_label) + 0.5 * criterion1(f_logit, f_label)
+                    loss_D = -torch.mean(r_logit) + torch.mean(f_logit)
 
                 opt_D.zero_grad(set_to_none=True)
                 # loss.requires_grad_(True)
@@ -137,8 +140,9 @@ def train_model(
                     with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
                         masks_pred = generator(images)
                         f_logit = discriminator(masks_pred)
-                        r_label = torch.ones(f_logit.size()).to(f_logit.device)
-                        loss_G = 0.5 * criterion1(f_logit, r_label) + 0.5 * criterion2(masks_pred, true_masks)
+                        # r_label = torch.ones(f_logit.size()).to(f_logit.device)
+                        # loss_G = 0.5 * criterion1(f_logit, r_label) + 0.5 * criterion2(masks_pred, true_masks)
+                        loss_G = -torch.mean(f_logit) + criterion1(masks_pred, true_masks)
 
                     opt_G.zero_grad(set_to_none=True)
                     # loss.requires_grad_(True)
@@ -175,14 +179,27 @@ def train_model(
                         # scheduler.step(val_score)
                         #
                         # logging.info('Validation Dice score: {}'.format(val_score))
+                        data = next(val_iter)
+                        val_image, val_true_mask = data['image'], data['mask']
+                        val_image = val_image.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
+                        val_true_mask = val_true_mask.to(device=device, dtype=torch.float32)
+                        with torch.no_grad():
+                            val_mask_pred = generator(val_image)
+                        if (global_step / division_step) % len(val_loader) == 0:
+                            val_iter = iter(cycle(val_loader))
                         try:
                             experiment.log({
                                 'learning rate of Generator': opt_G.param_groups[0]['lr'],
                                 'learning rate of Discriminator': opt_D.param_groups[0]['lr'],
-                                'images': wandb.Image(images[0].cpu()),
-                                'masks': {
+                                'images_train': wandb.Image(images[0].cpu()),
+                                'masks_train': {
                                     'true': wandb.Image(true_masks[0].float().cpu()),
                                     'pred': wandb.Image(masks_pred[0].float().cpu()),
+                                },
+                                'images_val': wandb.Image(val_image[0].cpu()),
+                                'masks_val': {
+                                    'true': wandb.Image(val_true_mask[0].float().cpu()),
+                                    'pred': wandb.Image(val_mask_pred[0].float().cpu()),
                                 },
                                 'step': global_step,
                                 'epoch': epoch,

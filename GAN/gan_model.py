@@ -91,7 +91,7 @@ class Discriminator(nn.Module):
             self.conv_bn_lrelu(64, 128),
             self.conv_bn_lrelu(128, 256),
             self.conv_bn_lrelu(256, 512),
-            nn.Conv2d(512, 1, 3, 1, 1)
+            nn.Conv2d(512, 1, 16, 1, 0)
         )
 
     def conv_bn_lrelu(self, in_dim, out_dim):
