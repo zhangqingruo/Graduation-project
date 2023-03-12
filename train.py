@@ -87,7 +87,8 @@ def train_model(
 
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
     # criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
-    criterion1 = nn.MSELoss()
+    # criterion1 = nn.MSELoss()
+    criterion1 = nn.BCEWithLogitsLoss()
     criterion2 = nn.L1Loss()
     global_step = 0
 
@@ -124,10 +125,10 @@ def train_model(
                     #     )
                     r_logit = discriminator(true_masks)
                     f_logit = discriminator(masks_pred)
-                    # r_label = torch.ones(r_logit.size()).to(r_logit.device)
-                    # f_label = torch.zeros(f_logit.size()).to(f_logit.device)
-                    # loss_D = 0.5 * criterion1(r_logit, r_label) + 0.5 * criterion1(f_logit, f_label)
-                    loss_D = -torch.mean(r_logit) + torch.mean(f_logit)
+                    r_label = torch.ones(r_logit.size()).to(r_logit.device)
+                    f_label = torch.zeros(f_logit.size()).to(f_logit.device)
+                    loss_D = 0.5 * criterion1(r_logit, r_label) + 0.5 * criterion1(f_logit, f_label)
+                    # loss_D = -torch.mean(r_logit) + torch.mean(f_logit)
 
                 opt_D.zero_grad(set_to_none=True)
                 # loss.requires_grad_(True)
@@ -140,9 +141,9 @@ def train_model(
                     with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
                         masks_pred = generator(images)
                         f_logit = discriminator(masks_pred)
-                        # r_label = torch.ones(f_logit.size()).to(f_logit.device)
-                        # loss_G = 0.5 * criterion1(f_logit, r_label) + 0.5 * criterion2(masks_pred, true_masks)
-                        loss_G = -torch.mean(f_logit) + criterion1(masks_pred, true_masks)
+                        r_label = torch.ones(f_logit.size()).to(f_logit.device)
+                        loss_G = 0.5 * criterion1(f_logit, r_label) + 0.5 * criterion2(masks_pred, true_masks)
+                        # loss_G = -torch.mean(f_logit) + criterion1(masks_pred, true_masks)
 
                     opt_G.zero_grad(set_to_none=True)
                     # loss.requires_grad_(True)

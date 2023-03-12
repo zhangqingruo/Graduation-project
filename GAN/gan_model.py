@@ -96,12 +96,13 @@ class Discriminator(nn.Module):
 
     def conv_bn_lrelu(self, in_dim, out_dim):
         return nn.Sequential(
-            nn.Conv2d(in_dim, out_dim, 3, 2, 1),
+            nn.Conv2d(in_dim, out_dim, 4, 2, 1),
             nn.BatchNorm2d(out_dim),
             nn.LeakyReLU(0.2)
         )
 
     def forward(self, x):
         x = self.l1(x)
+        x = x.view(-1)
 
         return x
