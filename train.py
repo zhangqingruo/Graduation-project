@@ -92,7 +92,7 @@ def train_model(
     criterion2 = nn.L1Loss()
     global_step = 0
 
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     # 5. Begin training
     for epoch in range(1, epochs + 1):
         generator.train()
