@@ -1,6 +1,14 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+
+def weights_init_normal(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(m.bias.data, 0.0)
 
 
 # Generator
@@ -41,6 +49,7 @@ class Generator(nn.Module):
             nn.Conv2d(64, channels, 3, 1, 1),
             nn.Tanh()
         )
+        self.apply(weights_init_normal)
 
     def forward(self, x):
         x = self.block1(x)
@@ -93,6 +102,7 @@ class Discriminator(nn.Module):
             self.conv_bn_lrelu(256, 512),
             nn.Conv2d(512, 1, 16, 1, 0)
         )
+        self.apply(weights_init_normal)
 
     def conv_bn_lrelu(self, in_dim, out_dim):
         return nn.Sequential(

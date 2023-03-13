@@ -168,7 +168,7 @@ def train_model(
                 division_step = (n_train // (5 * batch_size * n_critic))
                 if division_step > 0:
                     if global_step % division_step == 0:
-                        # histograms = {}
+                        histograms = {}
                         # for tag, value in generator.named_parameters():
                         #     tag = tag.replace('/', '.')
                         #     if not torch.isinf(value).any():
@@ -186,6 +186,7 @@ def train_model(
                         val_true_mask = val_true_mask.to(device=device, dtype=torch.float32)
                         with torch.no_grad():
                             val_mask_pred = generator(val_image)
+                            loss_val = criterion2(val_mask_pred, val_true_mask)
                         if (global_step / division_step) % len(val_loader) == 0:
                             val_iter = iter(cycle(val_loader))
                         try:
@@ -204,12 +205,14 @@ def train_model(
                                 },
                                 'step': global_step,
                                 'epoch': epoch,
+                                'valid loss': loss_val,
                                 # **histograms
                             })
                         except:
                             pass
-            scheduler_D.step()
-            scheduler_G.step()
+        scheduler_D.step()
+        scheduler_G.step()
+
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
