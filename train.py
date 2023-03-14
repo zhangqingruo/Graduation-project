@@ -277,8 +277,7 @@ if __name__ == '__main__':
     generator.to(device=device)
     discriminator.to(device=device)
 
-    device_ids = range(torch.cuda.device_count())
-    if len(device_ids) > 1:
+    if torch.cuda.device_count() > 1:
         generator = torch.nn.DataParallel(generator);
         discriminator = torch.nn.DataParallel(discriminator);
 
