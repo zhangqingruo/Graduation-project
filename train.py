@@ -13,8 +13,6 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from itertools import cycle
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 
 import wandb
 from evaluate import evaluate
@@ -235,7 +233,6 @@ def get_args():
                         help='Learning rate', dest='lr')
     parser.add_argument('--load_G', '-fg', type=str, default=False, help='Load model from a .pth file')
     parser.add_argument('--load_D', '-fd', type=str, default=False, help='Load model from a .pth file')
-    parser.add_argument('--mult_gpu', '-m', type=bool, default=False, help='Use multiple gpu')
     parser.add_argument('--scale', '-s', type=float, default=1, help='Downscaling factor of the images')
     parser.add_argument('--validation', '-v', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
@@ -280,12 +277,10 @@ if __name__ == '__main__':
     generator.to(device=device)
     discriminator.to(device=device)
 
-    if args.mult_gpu:
-        dist.init_process_group(backend='nccl', init_method='env://')
-        local_rank = int(os.environ['LOCAL_RANK'])
-        global_rank = int(os.environ['RANK'])
-        generator = DDP(generator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
-        discriminator = DDP(discriminator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
+    device_ids = range(torch.cuda.device_count())
+    if len(device_ids) > 1:
+        generator = torch.nn.DataParallel(generator);
+        discriminator = torch.nn.DataParallel(discriminator);
 
     try:
         train_model(
@@ -300,8 +295,6 @@ if __name__ == '__main__':
             amp=args.amp,
             n_critic=args.n_critic
         )
-        if args.mult_gpu:
-            dist.destroy_process_group()
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
                       'Enabling checkpointing to reduce memory usage, but this slows down training. '
