@@ -144,7 +144,7 @@ def train_model(
                         masks_pred = generator(images)
                         f_logit = discriminator(masks_pred)
                         r_label = torch.ones(f_logit.size()).to(f_logit.device)
-                        loss_G = 0.5 * criterion1(f_logit, r_label) + 0.5 * criterion2(masks_pred, true_masks)
+                        loss_G = 0.5 * criterion1(f_logit, r_label) + criterion2(masks_pred, true_masks)
                         # loss_G = -torch.mean(f_logit) + criterion1(masks_pred, true_masks)
 
                     opt_G.zero_grad(set_to_none=True)
