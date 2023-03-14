@@ -282,6 +282,8 @@ if __name__ == '__main__':
 
     if args.mult_gpu:
         dist.init_process_group(backend='nccl', init_method='env://')
+        local_rank = int(os.environ['LOCAL_RANK'])
+        global_rank = int(os.environ['RANK'])
         generator = DDP(generator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
         discriminator = DDP(discriminator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
 
