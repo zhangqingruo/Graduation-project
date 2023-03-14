@@ -13,6 +13,8 @@ from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from itertools import cycle
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 import wandb
 from evaluate import evaluate
@@ -54,7 +56,7 @@ def train_model(
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, batch_size=1, num_workers=os.cpu_count(), pin_memory=True)
+    val_loader = DataLoader(val_set, shuffle=False, **loader_args)
     val_iter = iter(cycle(val_loader))
 
     # (Initialize logging)
@@ -233,6 +235,7 @@ def get_args():
                         help='Learning rate', dest='lr')
     parser.add_argument('--load_G', '-fg', type=str, default=False, help='Load model from a .pth file')
     parser.add_argument('--load_D', '-fd', type=str, default=False, help='Load model from a .pth file')
+    parser.add_argument('--mult_gpu', '-fd', type=str, default=False, help='Use multiple gpu')
     parser.add_argument('--scale', '-s', type=float, default=1, help='Downscaling factor of the images')
     parser.add_argument('--validation', '-v', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
@@ -276,6 +279,12 @@ if __name__ == '__main__':
 
     generator.to(device=device)
     discriminator.to(device=device)
+
+    if args.mult_gpu:
+        dist.init_process_group(backend='nccl', init_method='env://')
+        generator = DDP(generator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
+        discriminator = DDP(discriminator, device_ids=[dist.get_rank()], output_device=dist.get_rank())
+
     try:
         train_model(
             generator=generator,
@@ -289,6 +298,8 @@ if __name__ == '__main__':
             amp=args.amp,
             n_critic=args.n_critic
         )
+        if args.mult_gpu:
+            dist.destroy_process_group()
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
                       'Enabling checkpointing to reduce memory usage, but this slows down training. '
