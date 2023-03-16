@@ -97,7 +97,7 @@ def train_model(
                 images, true_masks = batch['image'], batch['mask']
 
                 assert images.shape[1] == n_channels, \
-                    f'Network has been defined with {model.n_channels} input channels, ' \
+                    f'Network has been defined with {n_channels} input channels, ' \
                     f'but loaded images have {images.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
 
@@ -113,7 +113,7 @@ def train_model(
                         loss = criterion(masks_pred, true_masks)
                         loss += dice_loss(
                             F.softmax(masks_pred, dim=1).float(),
-                            F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                            F.one_hot(true_masks, n_classes).permute(0, 3, 1, 2).float(),
                             multiclass=True
                         )
 
