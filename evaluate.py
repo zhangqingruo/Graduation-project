@@ -6,7 +6,7 @@ from utils.dice_score import multiclass_dice_coeff, dice_coeff
 
 
 @torch.inference_mode()
-def evaluate(net, dataloader, device, amp):
+def evaluate(net, n_classes, dataloader, device, amp):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
@@ -23,7 +23,7 @@ def evaluate(net, dataloader, device, amp):
             # predict the mask
             mask_pred = net(image)
 
-            if net.n_classes == 1:
+            if n_classes == 1:
                 assert mask_true.min() >= 0 and mask_true.max() <= 1, 'True mask indices should be in [0, 1]'
                 mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
                 # compute the Dice score

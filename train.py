@@ -146,7 +146,7 @@ def train_model(
                             if not torch.isinf(value.grad).any():
                                 histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                        val_score, val_mask_pred, val_true_mask, val_image = evaluate(model, val_loader, device, amp)
+                        val_score, val_mask_pred, val_true_mask, val_image = evaluate(model, n_classes, val_loader, device, amp)
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
