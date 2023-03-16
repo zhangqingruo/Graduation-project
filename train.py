@@ -75,12 +75,17 @@ def train_model(
         Mixed Precision: {amp}
     ''')
 
+    n_channels = model.n_channels
+    n_classes = model.n_classes
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model);
+
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     optimizer = optim.RMSprop(model.parameters(),
                               lr=learning_rate, weight_decay=weight_decay, momentum=momentum, foreach=True)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss() if n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
 
     # 5. Begin training
@@ -91,10 +96,10 @@ def train_model(
             for batch in train_loader:
                 images, true_masks = batch['image'], batch['mask']
 
-                # assert images.shape[1] == model.n_channels, \
-                #     f'Network has been defined with {model.n_channels} input channels, ' \
-                #     f'but loaded images have {images.shape[1]} channels. Please check that ' \
-                #     'the images are loaded correctly.'
+                assert images.shape[1] == n_channels, \
+                    f'Network has been defined with {model.n_channels} input channels, ' \
+                    f'but loaded images have {images.shape[1]} channels. Please check that ' \
+                    'the images are loaded correctly.'
 
                 images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
                 true_masks = true_masks.to(device=device, dtype=torch.long)
@@ -216,9 +221,6 @@ if __name__ == '__main__':
         logging.info(f'Model loaded from {args.load}')
 
     model.to(device=device)
-
-    if torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model);
 
     try:
         train_model(
