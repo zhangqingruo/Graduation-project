@@ -150,26 +150,26 @@ def train_model(
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
-                        try:
-                            experiment.log({
-                                'learning rate': optimizer.param_groups[0]['lr'],
-                                'validation Dice': val_score,
-                                'train_images': wandb.Image(images[0].cpu()),
-                                'train_masks': {
-                                    'true': wandb.Image(true_masks[0].float().cpu()),
-                                    'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
-                                },
-                                # 'val_images': wandb.Image(val_image[0].cpu()),
-                                # 'val_masks': {
-                                #     'true': wandb.Image(val_true_mask[0].float().cpu()),
-                                #     'pred': wandb.Image(val_mask_pred.argmax(dim=1)[0].float().cpu()),
-                                # },
-                                'step': global_step,
-                                'epoch': epoch,
-                                **histograms
-                            })
-                        except:
-                            pass
+
+                        experiment.log({
+                            'learning rate': optimizer.param_groups[0]['lr'],
+                            'validation Dice': val_score,
+                            'train_images': wandb.Image(images[0].cpu()),
+                            'train_masks': {
+                                'true': wandb.Image(true_masks[0].float().cpu()),
+                                'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
+                            },
+                            'val_images': wandb.Image(val_image[0].cpu()),
+                            'val_masks': {
+                                'true': wandb.Image(val_true_mask[0].float().cpu()),
+                                'pred': wandb.Image(val_mask_pred.argmax(dim=1)[0].float().cpu()),
+                            },
+                            'step': global_step,
+                            'epoch': epoch,
+                            **histograms
+                        })
+
+
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)

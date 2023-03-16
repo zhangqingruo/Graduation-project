@@ -10,7 +10,6 @@ def evaluate(net, n_classes, dataloader, device, amp):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
-
     # iterate over the validation set
     with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
         for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
