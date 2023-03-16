@@ -12,6 +12,8 @@ from pathlib import Path
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+from itertools import cycle
+
 
 import wandb
 from evaluate import evaluate
@@ -89,10 +91,10 @@ def train_model(
             for batch in train_loader:
                 images, true_masks = batch['image'], batch['mask']
 
-                assert images.shape[1] == model.n_channels, \
-                    f'Network has been defined with {model.n_channels} input channels, ' \
-                    f'but loaded images have {images.shape[1]} channels. Please check that ' \
-                    'the images are loaded correctly.'
+                # assert images.shape[1] == model.n_channels, \
+                #     f'Network has been defined with {model.n_channels} input channels, ' \
+                #     f'but loaded images have {images.shape[1]} channels. Please check that ' \
+                #     'the images are loaded correctly.'
 
                 images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
                 true_masks = true_masks.to(device=device, dtype=torch.long)
@@ -139,7 +141,7 @@ def train_model(
                             if not torch.isinf(value.grad).any():
                                 histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                        val_score = evaluate(model, val_loader, device, amp)
+                        val_score, val_mask_pred, val_true_mask, val_image = evaluate(model, val_loader, device, amp)
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
@@ -151,6 +153,11 @@ def train_model(
                                 'masks': {
                                     'true': wandb.Image(true_masks[0].float().cpu()),
                                     'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
+                                },
+                                'images_val': wandb.Image(val_image),
+                                'masks_val': {
+                                    'true': wandb.Image(val_true_mask),
+                                    'pred': wandb.Image(val_mask_pred),
                                 },
                                 'step': global_step,
                                 'epoch': epoch,
@@ -170,7 +177,7 @@ def train_model(
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and target masks')
     parser.add_argument('--epochs', '-e', metavar='E', type=int, default=5, help='Number of epochs')
-    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
+    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=32, help='Batch size')
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
                         help='Learning rate', dest='lr')
     parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
@@ -209,6 +216,10 @@ if __name__ == '__main__':
         logging.info(f'Model loaded from {args.load}')
 
     model.to(device=device)
+
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model);
+
     try:
         train_model(
             model=model,

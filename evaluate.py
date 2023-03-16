@@ -37,4 +37,4 @@ def evaluate(net, dataloader, device, amp):
                 dice_score += multiclass_dice_coeff(mask_pred[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
 
     net.train()
-    return dice_score / max(num_val_batches, 1)
+    return dice_score / max(num_val_batches, 1), mask_pred.argmax(dim=1)[0].float().cpu(), mask_true[0].float().cpu(), image[0].cpu()
