@@ -154,15 +154,15 @@ def train_model(
                             experiment.log({
                                 'learning rate': optimizer.param_groups[0]['lr'],
                                 'validation Dice': val_score,
-                                'images': wandb.Image(images[0].cpu()),
-                                'masks': {
+                                'train_images': wandb.Image(images[0].cpu()),
+                                'train_masks': {
                                     'true': wandb.Image(true_masks[0].float().cpu()),
                                     'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
                                 },
-                                'images_val': wandb.Image(val_image),
-                                'masks_val': {
-                                    'true': wandb.Image(val_true_mask),
-                                    'pred': wandb.Image(val_mask_pred),
+                                'val_images': wandb.Image(val_image[0].cpu()),
+                                'val_masks': {
+                                    'true': wandb.Image(val_true_mask[0].float().cpu()),
+                                    'pred': wandb.Image(val_mask_pred.argmax(dim=1)[0].float().cpu()),
                                 },
                                 'step': global_step,
                                 'epoch': epoch,
