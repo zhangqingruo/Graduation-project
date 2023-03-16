@@ -159,10 +159,10 @@ def train_model(
                                 'true': wandb.Image(true_masks[0].float().cpu()),
                                 'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
                             },
-                            'val_images': wandb.Image(val_image[0].cpu()),
+                            'val_images': wandb.Image(val_image),
                             'val_masks': {
-                                'true': wandb.Image(val_true_mask[0].float().cpu()),
-                                'pred': wandb.Image(val_mask_pred.argmax(dim=1)[0].float().cpu()),
+                                'true': wandb.Image(val_true_mask),
+                                'pred': wandb.Image(val_mask_pred),
                             },
                             'step': global_step,
                             'epoch': epoch,
